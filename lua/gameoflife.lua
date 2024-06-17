@@ -99,6 +99,7 @@ local function main()
   while true do
     local oldGrid = cloneGrid(grid)
     grid = findNextGeneration(grid)
+    os.execute("sleep " .. tonumber(0.01))
     os.execute("clear")
     displayGrid(grid)
 
