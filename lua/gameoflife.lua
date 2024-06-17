@@ -1,12 +1,25 @@
--- Constants
-GAME = {}
-NEW_GAME = {}
-SIZE = 16
-ALIVE = "▇" -- U+2587 baby
+local ALIVE = "▇" -- U+2587 baby
 ALIVE = "#" -- comment out to use ^
 DEAD = " "
 
-local countAliveNeighbors = function(r, c)
+-- Trying to fit the game to the terminal window :')
+local function getConsoleDimensions()
+  local rows, cols = io.popen('stty size'):read('*a'):match('(%d+)%s+(%d+)')
+  return tonumber(rows), tonumber(cols)
+end
+
+local function initializeGrid(rows, cols)
+  local grid = {}
+  for r = 1, rows do
+    grid[r] = {}
+    for c = 1, cols do
+      grid[r][c] = math.random() > 0.8 and ALIVE or DEAD
+    end
+  end
+  return grid
+end
+
+local function countAliveNeighbors(grid, r, c)
   local neighbors = {
     {-1, -1}, {-1, 0}, {-1, 1},
     {0, -1}, {0, 1},
@@ -15,88 +28,88 @@ local countAliveNeighbors = function(r, c)
   local count = 0
   for _, neighbor in ipairs(neighbors) do
     local row, col = r + neighbor[1], c + neighbor[2]
-    if row >= 1 and row <= SIZE and col >= 1 and col <= 2 * SIZE and GAME[row][col] == ALIVE then
+    if row >= 1 and row <= #grid and col >= 1 and col <= #grid[1] and grid[row][col] == ALIVE then
       count = count + 1
     end
   end
   return count
 end
 
-local initializeGrid = function()
-  for r = 1, SIZE do
-    GAME[r] = {}
-    NEW_GAME[r] = {}
-    for c = 1, 2 * SIZE do
-      GAME[r][c] = math.random() > 0.8 and ALIVE or DEAD
-      NEW_GAME[r][c] = DEAD
-    end
-  end
-end
-
-local displayGrid = function()
-  for r = 1, SIZE do
-    for c = 1, 2 * SIZE do
-      io.write(GAME[r][c])
-    end
-    print()
-  end
-end
-
-local findNextGenerationAndSetGame = function()
-  for r = 1, SIZE do
-    for c = 1, 2 * SIZE do
-      local state, aliveNeighborCount = GAME[r][c], countAliveNeighbors(r, c)
+local function findNextGeneration(grid)
+  local newGrid = {}
+  for r = 1, #grid do
+    newGrid[r] = {}
+    for c = 1, #grid[1] do
+      local state, aliveNeighborCount = grid[r][c], countAliveNeighbors(grid, r, c)
       if state == ALIVE and aliveNeighborCount < 2 then
-        NEW_GAME[r][c] = DEAD
+        newGrid[r][c] = DEAD
       elseif state == ALIVE and aliveNeighborCount >= 2 and aliveNeighborCount < 4 then
-        NEW_GAME[r][c] = ALIVE
+        newGrid[r][c] = ALIVE
       elseif state == ALIVE and aliveNeighborCount > 3 then
-        NEW_GAME[r][c] = DEAD
+        newGrid[r][c] = DEAD
       elseif state == DEAD and aliveNeighborCount == 3 then
-        NEW_GAME[r][c] = ALIVE
+        newGrid[r][c] = ALIVE
       else
-        NEW_GAME[r][c] = state
+        newGrid[r][c] = state
       end
     end
   end
-  -- Swap GAME and NEW_GAME
-  GAME, NEW_GAME = NEW_GAME, GAME
+  return newGrid
 end
 
-local cloneGrid = function (game)
+local function cloneGrid(grid)
   local clonedGrid = {}
-  for r = 1, SIZE do
+  for r = 1, #grid do
     clonedGrid[r] = {}
-    for c = 1, 2 * SIZE do
-      clonedGrid[r][c] = game[r][c]
+    for c = 1, #grid[1] do
+      clonedGrid[r][c] = grid[r][c]
     end
   end
   return clonedGrid
 end
 
-local gridIsStable = function (oldGame, newGame)
-  local isStable = true
-  for r = 1, SIZE do
-    for c = 1, 2 * SIZE do
-      if newGame[r][c] ~= oldGame[r][c] then
-        isStable = false
-        break
+local function gridIsStable(oldGrid, newGrid)
+  for r = 1, #oldGrid do
+    for c = 1, #oldGrid[1] do
+      if newGrid[r][c] ~= oldGrid[r][c] then
+        return false
       end
     end
-    if not isStable then break end
+  end
+  return true
+end
+
+local function displayGrid(grid)
+  for r = 1, #grid do
+    for c = 1, #grid[1] do
+      io.write(grid[r][c])
+    end
+    print()
   end
 end
 
-initializeGrid()
-while true do
-  os.execute("sleep " .. tonumber(0.01))
+local function main()
+  local rows, cols = getConsoleDimensions()
+  -- Adjust the columns to make the game a square, otherwise fullscreen 😎
+  -- cols = math.floor(cols / 2)
+  local grid = initializeGrid(rows, cols)
+
   os.execute("clear")
-  displayGrid()
-  local oldGame = cloneGrid(GAME)
-  findNextGenerationAndSetGame()
-  -- Check if the grid is stable
-  if gridIsStable(oldGame, GAME) then
-    print("The grid is stable. Stopping...")
-    break
+  io.write("\27[?25l") -- Hide cursor
+  while true do
+    local oldGrid = cloneGrid(grid)
+    grid = findNextGeneration(grid)
+    os.execute("clear")
+    displayGrid(grid)
+
+    -- can sometimes stop the grid, other times there're alternating states
+    if gridIsStable(oldGrid, grid) then
+      print("The grid is stable. Stopping...")
+      break
+    end
+
   end
+  io.write("\27[?25h") -- Show cursor
 end
+
+main()
