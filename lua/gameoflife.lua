@@ -1,6 +1,7 @@
 local ALIVE = "▇" -- U+2587 baby
 ALIVE = "#" -- comment out to use ^
-DEAD = " "
+local DEAD = " "
+local TICK_GAP = 0 -- seconds
 
 -- Trying to fit the game to the terminal window :')
 local function getConsoleDimensions()
@@ -99,7 +100,7 @@ local function main()
   while true do
     local oldGrid = cloneGrid(grid)
     grid = findNextGeneration(grid)
-    os.execute("sleep " .. tonumber(0.01))
+    os.execute("sleep " .. tonumber(TICK_GAP))
     os.execute("clear")
     displayGrid(grid)
 
