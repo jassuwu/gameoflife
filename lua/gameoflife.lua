@@ -1,5 +1,4 @@
-local ALIVE = "▇" -- U+2587 baby
-ALIVE = "#" -- comment out to use ^
+local ALIVE = "■"
 local DEAD = " "
 local TICK_GAP = 0 -- seconds
 
